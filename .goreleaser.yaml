@@ -1,5 +1,5 @@
 # .goreleaser.yaml
-
+version: 2
 before:
   hooks:
     - go mod tidy
@@ -12,7 +12,7 @@ builds:
       - amd64
     main: ./main.go
     ldflags:
-      - -X main.Version=v{{.Version}}
+      - -X cmd.Version=v{{.Version}}
 
   - id: darwin
     goos:
@@ -22,7 +22,7 @@ builds:
       - arm64
     main: ./main.go
     ldflags:
-      - -X main.Version=v{{.Version}}
+      - -X cmd.Version=v{{.Version}}
 
   - id: windows
     binary: rx
@@ -32,7 +32,7 @@ builds:
       - amd64
     main: ./main.go
     ldflags:
-      - -X main.Version=v{{.Version}}
+      - -X cmd.Version=v{{.Version}}
 
 archives:
   - id: darwin
