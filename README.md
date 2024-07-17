@@ -1,6 +1,6 @@
 # rx
 
-Rom eXpander is a cli tool designed to help you to manage your rom collection.
+Rom eXpander is a cli tool designed to help you manage your rom collection.
 It can compress individual rom files into zip files and inflate content files from zip files.
 
 # Usage
