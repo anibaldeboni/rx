@@ -9,25 +9,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "rx",
-	Short: "rx is a cli tool to zip and unzip individual rom files.",
-	Long: `Rom eXpander is a cli tool designed to help you to manage your rom collection.
+var (
+	rootCmd = &cobra.Command{
+		Use:   "rx",
+		Short: "rx is a cli tool to zip and unzip individual rom files.",
+		Long: `Rom eXpander is a cli tool designed to help you to manage your rom collection.
 It can compress individual rom files into zip files and inflate content files from zip files.
 	`,
-}
+		Version: Version,
+	}
+
+	options       *Options
+	walkRecursive bool
+	outputDir     string
+	workers       int
+	Version       = "dev"
+)
 
 type Options struct {
 	FindFunc files.FindFilesFunc
 	Workers  int
 	Output   string
 }
-
-var options *Options
-
-var walkRecursive bool
-var outputDir string
-var workers int
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&walkRecursive, "recursive", "r", false, "walk recursively through directories")
