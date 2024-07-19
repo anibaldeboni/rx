@@ -6,11 +6,20 @@ It can compress individual rom files into zip files and inflate content files fr
 # Usage
 
 ```sh
-rx zip /my/rom/path --output /path/to/zip-files
+  rx [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  unzip       inflate rom files.
+  zip         compress rom files.
+
+Flags:
+  -h, --help            help for rx
+  -o, --output string   output directory
+  -r, --recursive       walk recursively through directories
+  -v, --version         version for rx
+  -w, --workers int     number of workers to use (default 8)
 ```
 
-```sh
-rz unzip /my/zipped/roms --output /path/to/inflated/roms
-```
-
-If you don't set `--output` the files will be inflated/deflated to the same directory of the original files. Likewise if the dir path is not provided it current working dir will be used
+If you don't set `--output` the files will be inflated/deflated to the same directory of the original files. Likewise if the dir path is not provided the current working dir will be used.
