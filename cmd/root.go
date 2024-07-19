@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 
@@ -50,7 +51,7 @@ func FindFilesStrategy() files.FindFilesFunc {
 func HandleErrors(errs <-chan error) {
 	go func(errs <-chan error) {
 		for err := range errs {
-			fmt.Fprintln(os.Stderr, err)
+			log.Println(err)
 		}
 	}(errs)
 }

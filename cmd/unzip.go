@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -61,7 +62,7 @@ func unzipWorker(wg *sync.WaitGroup, files <-chan string, errs chan<- error) {
 		for _, zipContent := range zipFile.File {
 			outputFilePath := filepath.Join(options.Output, zipContent.Name)
 
-			fmt.Println("Extracting file", outputFilePath)
+			log.Println("Extracting file", outputFilePath)
 
 			if zipContent.FileInfo().IsDir() {
 				if err := os.MkdirAll(outputFilePath, os.ModePerm); err != nil {

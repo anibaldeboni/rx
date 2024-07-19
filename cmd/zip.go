@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,7 +34,7 @@ func executeZip(cmd *cobra.Command, args []string) {
 	HandleErrors(errs)
 	SetupWorkers(zipWorker, options.FindFunc, args[0], errs)
 
-	fmt.Println("Done!")
+	log.Println("Done!")
 }
 
 func zipWorker(wg *sync.WaitGroup, files <-chan string, errs chan<- error) {
