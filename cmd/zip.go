@@ -4,73 +4,63 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
+	"github.com/anibaldeboni/rx/styles"
 	"github.com/spf13/cobra"
 )
 
-const ZipExtension = ".zip"
-
-func init() {
-	rootCmd.AddCommand(zipCmd)
+func (c *Cli) zipCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "zip [path]",
+		Short:   "compress rom files.",
+		Long:    `Compress rom files into individual zip files.`,
+		PreRunE: validateCmdPath,
+		Run:     c.zip,
+	}
 }
 
-var zipCmd = &cobra.Command{
-	Use:     "zip [path]",
-	Short:   "compress rom files.",
-	Long:    `Compress rom files into individual zip files.`,
-	PreRunE: validateCmdPath,
-	Run:     executeZip,
+func (c *Cli) zip(cmd *cobra.Command, args []string) {
+	c.SetupWorkers(c.zipWorker, args[0])
 }
 
-func executeZip(cmd *cobra.Command, args []string) {
-	errs := make(chan error)
-	defer close(errs)
-
-	HandleErrors(errs)
-	SetupWorkers(zipWorker, options.FindFunc, args[0], errs)
-
-	log.Println("Done!")
-}
-
-func zipWorker(wg *sync.WaitGroup, files <-chan string, errs chan<- error) {
-	defer wg.Done()
+func (c *Cli) zipWorker(files <-chan string) {
+	defer c.wg.Done()
 
 	for file := range files {
 		func() {
-			outputFileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)) + ZipExtension
-			outputFilePath := filepath.Join(options.Output, outputFileName)
+			zipFile := filepath.Base(file)
+			outputFileName := strings.TrimSuffix(zipFile, filepath.Ext(file)) + ZipExtension
+			outputFilePath := filepath.Join(c.Output, outputFileName)
 
 			outputFile, err := os.Create(outputFilePath)
 			defer outputFile.Close()
 			if err != nil {
-				errs <- fmt.Errorf("Error creating file %s: %w", outputFilePath, err)
+				c.errs <- fmt.Errorf("Error creating file %s: %w", outputFilePath, err)
 				return
 			}
 
 			inputFile, err := os.Open(file)
 			defer inputFile.Close()
 			if err != nil {
-				errs <- fmt.Errorf("Error opening file %s: %w", file, err)
+				c.errs <- fmt.Errorf("Error opening file %s: %w", file, err)
 				return
 			}
 
 			zipWriter := zip.NewWriter(outputFile)
 
-			fileWriter, err := zipWriter.Create(filepath.Base(file))
+			fileWriter, err := zipWriter.Create(zipFile)
 			if err != nil {
-				errs <- fmt.Errorf("Error creating file %s in zip: %w", file, err)
+				c.errs <- fmt.Errorf("Error creating file %s in zip: %w", file, err)
 				return
 			}
 
-			fmt.Printf("Zipping %s\n", file)
+			fmt.Printf("Compressing %s\n", styles.LightBlue(zipFile))
 
 			if _, err := io.Copy(fileWriter, inputFile); err != nil {
-				errs <- fmt.Errorf("Error compressing file %s to zip: %w", file, err)
+				c.errs <- fmt.Errorf("Error compressing file %s to zip: %w", file, err)
 				return
 			}
 
