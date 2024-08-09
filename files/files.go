@@ -22,7 +22,7 @@ func FindRecursive(path string, errs chan<- error) chan string {
 				return nil
 			},
 			ErrorCallback: func(osPathname string, err error) godirwalk.ErrorAction {
-				errs <- fmt.Errorf("Error walking %s: %s", osPathname, err)
+				errs <- fmt.Errorf("Error walking %s: %w", osPathname, err)
 				return godirwalk.SkipNode
 			},
 			Unsorted: true, // set true for faster yet non-deterministic enumeration (see godoc)

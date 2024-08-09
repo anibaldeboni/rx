@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,16 +18,16 @@ func (c *Cli) zipCmd() *cobra.Command {
 		Use:     "zip [path]",
 		Short:   "compress rom files.",
 		Long:    `Compress rom files into individual zip files.`,
-		PreRunE: validateCmdPath,
+		PreRunE: c.validatePath,
 		Run:     c.zip,
 	}
 }
 
 func (c *Cli) zip(cmd *cobra.Command, args []string) {
-	c.SetupWorkers(c.zipWorker, args[0])
+	c.SetupWorkers(c.zipWorker, c.Cwd)
 }
 
-func (c *Cli) zipWorker(files <-chan string) {
+func (c *Cli) zipWorker(files <-chan string, addr int) {
 	defer c.wg.Done()
 
 	for file := range files {
@@ -38,14 +39,14 @@ func (c *Cli) zipWorker(files <-chan string) {
 			outputFile, err := os.Create(outputFilePath)
 			defer outputFile.Close()
 			if err != nil {
-				c.errs <- fmt.Errorf("Error creating file %s: %w", outputFilePath, err)
+				c.errs <- fmt.Errorf("[%s] Error creating file %s: %w", fmtWorker(addr), outputFileName, err)
 				return
 			}
 
 			inputFile, err := os.Open(file)
 			defer inputFile.Close()
 			if err != nil {
-				c.errs <- fmt.Errorf("Error opening file %s: %w", file, err)
+				c.errs <- fmt.Errorf("[%s] Error opening file %s: %w", fmtWorker(addr), file, err)
 				return
 			}
 
@@ -53,14 +54,14 @@ func (c *Cli) zipWorker(files <-chan string) {
 
 			fileWriter, err := zipWriter.Create(zipFile)
 			if err != nil {
-				c.errs <- fmt.Errorf("Error creating file %s in zip: %w", file, err)
+				c.errs <- fmt.Errorf("[%s] Error creating file %s in zip: %w", fmtWorker(addr), file, err)
 				return
 			}
 
-			fmt.Printf("Compressing %s\n", styles.LightBlue(zipFile))
+			log.Printf("[%s] Compressing %s\n", fmtWorker(addr), styles.LightBlue(zipFile))
 
 			if _, err := io.Copy(fileWriter, inputFile); err != nil {
-				c.errs <- fmt.Errorf("Error compressing file %s to zip: %w", file, err)
+				c.errs <- fmt.Errorf("[%s] Error compressing file %s to zip: %w", fmtWorker(addr), file, err)
 				return
 			}
 

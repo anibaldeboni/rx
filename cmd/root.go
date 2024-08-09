@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/anibaldeboni/rx/files"
 	"github.com/anibaldeboni/rx/styles"
@@ -14,20 +15,27 @@ import (
 
 var Version = "dev"
 
-const ZipExtension = ".zip"
+const (
+	ZipExtension        = ".zip"
+	ErrPathNotExists    = "Path %s does not exist"
+	ErrPathNotDirectory = "Path %s is not a directory"
+	ErrInvalidPath      = "Invalid path %s: %w"
+)
 
 type Cli struct {
 	Workers   int
 	Output    string
 	Version   string
+	Cwd       string
 	Recursive bool
 	errs      chan error
 	wg        *sync.WaitGroup
 }
 
-type WorkerFunc func(<-chan string)
+type WorkerFunc func(<-chan string, int)
 
 func (c *Cli) SetupWorkers(worker WorkerFunc, path string) {
+	start := time.Now()
 	log.Printf("Looking for files at %s\n", styles.DarkPink(path))
 	files := c.FindFiles()(path, c.errs)
 
@@ -35,11 +43,11 @@ func (c *Cli) SetupWorkers(worker WorkerFunc, path string) {
 
 	c.wg.Add(c.Workers)
 	for i := 0; i < c.Workers; i++ {
-		go worker(files)
+		go worker(files, i+1)
 	}
 
 	c.wg.Wait()
-	log.Println(styles.Green("Done!"))
+	log.Println(styles.Green("Done!"), "Elapsed time:", time.Since(start))
 }
 
 func (c *Cli) FindFiles() files.FindFilesFunc {
@@ -50,6 +58,10 @@ func (c *Cli) FindFiles() files.FindFilesFunc {
 	return files.FindFilesInRootDirectory
 }
 
+func fmtWorker(addr int) string {
+	return styles.LightGreen(fmt.Sprintf("🛠️ %03d", addr))
+}
+
 func HandleErrors(errs <-chan error) {
 	go func(errs <-chan error) {
 		for err := range errs {
@@ -58,26 +70,35 @@ func HandleErrors(errs <-chan error) {
 	}(errs)
 }
 
-func validateCmdPath(cmd *cobra.Command, args []string) error {
+func (c *Cli) validatePath(cmd *cobra.Command, args []string) error {
+	var path string
+
 	if len(args) < 1 {
-		return fmt.Errorf("Path is required")
+		path = c.Cwd
+	} else {
+		path = args[0]
 	}
 
-	if err := checkPath(args[0]); err != nil {
+	if err := checkPath(path); err != nil {
 		return fmt.Errorf("Could not run: %w", err)
 	}
 
+	if _, err := os.Stat(c.Output); os.IsNotExist(err) {
+		os.MkdirAll(c.Output, os.ModePerm)
+	}
+
+	log.Printf("Output directory: %s\n", styles.Green(c.Output))
 	return nil
 }
 
 func checkPath(path string) error {
 	switch p, err := os.Stat(path); {
-	case err != nil:
-		return fmt.Errorf("Invalid path %s: %w", styles.DarkRed(path), err)
-	case p == nil:
+	case os.IsNotExist(err):
 		return fmt.Errorf("Path %s does not exist", styles.DarkRed(path))
 	case !p.IsDir():
 		return fmt.Errorf("Path %s is not a directory", styles.DarkRed(path))
+	case err != nil:
+		return fmt.Errorf("Invalid path %s: %w", styles.DarkRed(path), err)
 	default:
 		return nil
 	}
@@ -87,6 +108,7 @@ func Execute() {
 	errs := make(chan error)
 	defer close(errs)
 
+	log.SetFlags(log.Lmicroseconds)
 	HandleErrors(errs)
 
 	cli := &Cli{
@@ -108,6 +130,7 @@ It can compress individual rom files into zip files and inflate content files fr
 
 	rootCmd.PersistentFlags().BoolVarP(&cli.Recursive, "recursive", "r", false, "walk recursively through directories")
 	cwd, _ := os.Getwd()
+	cli.Cwd = cwd
 	rootCmd.PersistentFlags().StringVarP(&cli.Output, "output", "o", cwd, "output directory")
 	rootCmd.PersistentFlags().IntVarP(&cli.Workers, "workers", "w", runtime.NumCPU(), "number of workers to use")
 
